@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferienliste</title>
+    <style>
+        :root {
+            --primary: #2c6fbb;
+            --primary-light: #e8f0fe;
+            --bg: #f5f7fa;
+            --card-bg: #ffffff;
+            --text: #333;
+            --text-light: #666;
+            --border: #dde3ea;
+            --success: #34a853;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            font-size: 2em;
+            margin-bottom: 8px;
+        }
+        .progress-bar-container {
+            max-width: 900px;
+            margin: 0 auto 20px;
+            text-align: center;
+        }
+        .progress-bar-container .bar-bg {
+            background: var(--border);
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        .progress-bar-container .bar-fill {
+            background: linear-gradient(90deg, var(--primary), var(--success));
+            height: 100%;
+            width: 0%;
+            border-radius: 10px;
+            transition: width 0.4s ease;
+        }
+        .progress-text {
+            font-size: 0.95em;
+            color: var(--text-light);
+            margin-top: 4px;
+        }
+        .controls {
+            max-width: 900px;
+            margin: 0 auto 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .controls button {
+            padding: 8px 18px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--card-bg);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+        .controls button:hover {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .section {
+            max-width: 900px;
+            margin: 0 auto 20px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        .section-header {
+            background: var(--primary);
+            color: #fff;
+            padding: 14px 20px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .section-header:hover { background: #245aa0; }
+        .section-header .toggle { font-size: 1.2em; transition: transform 0.3s; }
+        .section-header.collapsed .toggle { transform: rotate(-90deg); }
+        .section-progress {
+            font-size: 0.75em;
+            background: rgba(255,255,255,0.25);
+            padding: 2px 10px;
+            border-radius: 10px;
+            margin-left: 10px;
+        }
+        .section-body { padding: 16px 20px; }
+        .section-body.hidden { display: none; }
+        .subsection-title {
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 1.05em;
+            margin: 16px 0 8px;
+            padding-bottom: 4px;
+            border-bottom: 2px solid var(--primary-light);
+        }
+        .subsection-title:first-child { margin-top: 0; }
+        .info-line {
+            padding: 6px 0;
+            color: var(--text-light);
+            font-style: italic;
+        }
+        .item {
+            display: flex;
+            align-items: flex-start;
+            padding: 5px 0;
+            gap: 10px;
+            transition: opacity 0.3s;
+        }
+        .item.checked { opacity: 0.5; }
+        .item.checked .item-text { text-decoration: line-through; color: var(--text-light); }
+        .item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            min-width: 20px;
+            margin-top: 2px;
+            accent-color: var(--success);
+            cursor: pointer;
+        }
+        .item-text { flex: 1; }
+        .separator {
+            border: none;
+            border-top: 1px dashed var(--border);
+            margin: 10px 0;
+        }
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .section-header { font-size: 1em; padding: 12px 14px; }
+            .section-body { padding: 12px 14px; }
+        }
+        @media print {
+            .controls { display: none; }
+            .section { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>🏖️ Ferienliste</h1>
+
+<div class="progress-bar-container">
+    <div class="bar-bg"><div class="bar-fill" id="globalBar"></div></div>
+    <div class="progress-text" id="globalText">0 / 0 erledigt (0%)</div>
+</div>
+
+<div class="controls">
+    <button onclick="toggleAll(true)">✅ Alle abhaken</button>
+    <button onclick="toggleAll(false)">⬜ Alle zurücksetzen</button>
+    <button onclick="expandAll(true)">📂 Alle aufklappen</button>
+    <button onclick="expandAll(false)">📁 Alle zuklappen</button>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 1: Vor den Ferien erledigen -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Vor den Ferien erledigen <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Post abbestellen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Adresse hinterlegen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Pflanzen giessen organisieren</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Wohnungsschlüssel hinterlegen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">alle Arbeitgeber-Adressen hinterlegen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Pass kopieren, Pass No. notieren</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Flugtickets und Hotelgutscheine kopieren</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Traveller-Checks, ausländisches Geld (Trinkgeld Reiseleiter, Chauffeur einkalkulieren)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Krankenversicherung fürs Ausland</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Malariaprophylaxe bzw. Impfungen bei Schweizerischem Tropeninstitut abklären</span></div>
+        <hr class="separator">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Schmuck</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kassette</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Bankunterlagen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Steuererklärung</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Anstellungsunterlagen</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 2: Während unseren Ferien -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Während unseren Ferien <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="info-line">Wir sind in den Ferien vom _________________ bis _________________</div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">gebucht durch Reisebüro: _______________</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Rundreise: _______________</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Hotel: _______________</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Wohnungsschlüssel deponiert bei: _______________</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 3: Packen – Allgemeines -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Packen für die Ferien – Allgemeines <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Pass, Identitätskarte</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Halbtax</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Zugbillett Livio, Alina (Juniorkarte)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Flugticket</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Fremde Geldwährung, Mastercard, EC-Karte</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Reiseunterlagen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Stadtpläne</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Dictionnaire</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Reiseführer</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Führerausweis und Übersetzung</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Malaria-Tabletten / Impfungen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Blutgruppen-Karte</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Durchsichtige Portemonnaie ZKB</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Adressbuch/Aufklebeadressen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kugelschreiber, Frixion, Bleistift, Couverts</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">INTERTOURS-Winterthur-Karte, in Europa KK-Kärtli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">REGA-Karte</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">zusammenlegbare leere Tasche für evt. Einkäufe</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Tagebuch</span></div>
+        <hr class="separator">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Sekundenleim</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Klebstreifen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Elektr. Stecker für das Ausland</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Uhr für den Strand</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Haken (z.B. Picknicksack an Sonnenschirm hängen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Nähnecessaire</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Fön</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Waschpulver</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Wäscheseil, Wäscheklammern</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Sonnencrème (Mallorca: 3 Sherpa 50, 3 Sherpa 50 f. Kids)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Schnur</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Taschenlampe</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Binden, Tampons</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Papiertaschentücher</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">feuchte Tüchlein</span></div>
+        <hr class="separator">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Boggia, Federball, Beachball</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kartenspiele (Uno, Jocker, Halma, Backgammon, Take 6, Skip Bo, Quartett, Yatzi, Tutto)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Bücher</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Luftmatratzen, Wasserball, Flickzeug für Luftmatratze, Ballpumpe</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Taucherbrille, Schnorchel</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Schläppli (Mallorca: 2 Schläppli Marco, 1 für Nachtessen, 1 für Strand)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Brillen, Sonnenbrille, Brillenetui Livio</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Ohrenschutz</span></div>
+        <hr class="separator">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Photoapparate, 2 Akkus, Akkuladegerät, Fotochips, Stativ</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Videokamera, Akku, Chip</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Feldstecher</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Plastiksack für Photoapparat</span></div>
+        <hr class="separator">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Handy</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Akku für Handy</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Wecker</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Plastiksäcke für schmutzige Wäsche</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Plastik-Tragtaschen</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 4: Picknick (während der Reise) -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Picknick (während der Reise) <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Trinkflaschen Livio und Alina</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Getränke</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kühltasche</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Taillentasche</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Rucksack (evtl. 2)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Wasserdichte Tasche für den Strand</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Schirm, Regenschutz</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Nackenstütze</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Dächlikappe, Sonnenhut</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Handtasche/kleiner Rucksack</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Moskitonetz</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Schnarchmaschine</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 5: Kleider -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Kleider <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Pyjama (Sommer) (1)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Pyjama (Winter) (1)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Badehosen, Bikini (2)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">genügend Badetücher</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">(evtl. Hand-/ Duschtuch)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Badetasche (2)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Trainer</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Jacke</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Regenjacke</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Unterhosen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Herrenhemden (Langarm) (1)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Herrenhemden (Kurzarm) (Mallorca: 5)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Hemden</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">wollige Leibchen (lang- und kurzarm)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">BH</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Strumpfhosen, Kniestrümpfe</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Söckli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Schuhe (Mallorca: Marco 1 Sandalen, Daniela 2 Sandalen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Turnschuhe (Mallorca ohne Ausflüge keine Turnschuhe)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">T-Shirt (Langarm) (2) (Rieden: Marco 1, Daniela 3)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">T-Shirt (Kurzarm) (5) (Perrefitte: Daniela 5, Mallorca: Marco 2 Polo, Daniela 4)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">T-Shirt (ärmellos) (2) (Perrefitte: Daniela 3, Mallorca: Daniela 2)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Blusen (Langarm)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Blusen (ärmellos) (3)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Shorts (Rieden: je 2, Mallorca: Marco 3, Daniela 2 + 1 für Strand)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Lange Hosen (3 + 2 3/8 Hose) (Rieden: je 2 Jeans, 1 leichte, Mallorca: Daniela 1 + 1 3/8)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Sommerröcke (4)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Strandröcke (3)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Gürtel</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">warme Pullover (Rieden: je 1)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Jäckli (Rieden: je 1, Mallorca 1)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">T-Shirts für Strand (Mallorca: Marco 3, Daniela 1)</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 6: Toilettenartikel -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Toilettenartikel <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Zahnpasta, Elmexgelée (Schrannenhof 2 mitnehmen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Zahnbecher</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Zahnbürsten</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Duschmittel (Schrannenhof 2 mitnehmen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Der Med</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Shampoo</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Crèmespülung</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Deo</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Haken für Waschlappen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Nagelfeile, Nagelschere</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Wattestäbli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Nagelackentferner, Rasierklinge</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Haarlack, Haarschaum, Haargel</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Watte</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Seifen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Waschlappen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Spiegel</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kamm</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Haarbürste</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Zahnspange, Haarschmuck, Ohrenstäbli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Zahnseide</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Ohrringe, Make-up, Make-up-Entferner</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Parfum</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 7: Apotheke -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Apotheke <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Tabletten Marco</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Stützstrümpfe für Langstreckenflüge</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Fiebermesser (Malaria)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Desinfektionsmittel</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Euthyrox (Schilddrüse)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Algifor (gegen Fieber, Schmerzen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Dafalgan 500 mg</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Panadol</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Pflaster gerade/Pflaster rund, Kinderpflaster (selbsthaftende Gazebinden)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Wundverschlussstreifen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Zeckenkarte</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Merfen-Desinfektionsmittel 2 ‰ ohne Quecksilber</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Halstabletten (Mebu-Lemon)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Strepsils (gegen Halsweh)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Thymiansalbe</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Deaftol (gegen Aphten, Halsweh)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Nasentropfen (Triofan)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Naapreb (zur Desinfektion von Wunden oder zum Nase spülen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Imodium-Tabletten (gegen Durchfall)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Perenterol/Bioflorin (Sachets gegen Durchfall)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Vita-Merfen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Antibrumm ev. Antibrumm forte</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Midalgansalbe / Aginex Stick</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Voltarensalbe Dolo oder Flector EP Gel (Generika)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Augentropfen VisMed</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Augentropfen Atropin</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Inflamac oder Assan emgel (Salbe für Hand)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Elmetacin (Schwellungen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kytta (Verstauchungen, Muskelschmerzen etc.)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Fenistil</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Fenipic (gegen Insekten)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Feniallerg Tropfen (gegen Wespenstich)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">AcetaGel</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Gyno-Canesten 3 (gegen Pilz)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Femannose (oder Blasentabletten Urotib)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Blasentee</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">OROPAX</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Verbandstoff, Gazeblätzli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Taschenmesser</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Schere</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Pincette</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Sicherheitsnadeln</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Tabletten für Spangenreinigung</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Magnesiumbeutel</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Stop Hemo Brothier (sterile blutstillende Watte)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Virucalm oder Zofirax (Aviral = Generika, gegen Herpes)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Lid Care (Make-up-Entferner)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Antidry Calm (Haut Livio)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Zahnspange Alina</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 8: Livio und Alina – Toilettenartikel -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Livio und Alina – Toilettenartikel <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Watte</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Wattenstäbli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Nagelschere</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Haarbürste, Kamm</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Zahnbürste, Zahnpaste, Zahnbecher</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Badetuch</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Duschmittel</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">4 Waschlappen</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 9: Livio und Alina – Kleider -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Livio und Alina – Kleider <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Winterpullover (Rieden: 1, Skiferien: 2)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Pullover (Rieden: 2, Skiferien 2)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">T-Shirt kurzarm (Perrefitte: 6, Mallorca: Livio 3)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">T-Shirt langarm (Perrefitte: 2, Skiferien: 2)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">T-Shirt ärmellos (Perrefitte: Alina 3, Mallorca: Livio 4, Alina 2)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Hemden langarm</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Hemden kurzarm (Mallorca: 2)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">leichte lange Hosen (Rieden, Mallorca: Livio 1, Alina 1)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">warme lange Hosen (Rieden: 2 Manchester, 1 Jeans, Thermojeans, Skiferien: 2)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Shorts (Mallorca: Livio 4, Alina 3)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Sommerröcke (Mallorca: 5)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Strandröcke (Mallorca: 3)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Trainerhosen (Rieden: 1, Skiferien: 1)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Unterhosen (Mallorca: 7)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Unterleibchen (Mallorca: 1)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Socken (Rieden: 3/2, Skiferien: 3 wegen Leggins)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Strumpfhosen, Leggins (Rieden: 2, Skiferien: 3 Strumpfhosen, 2 Leggins)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Pyjama (kurz- und langarm) (je 2, Winterferien: 2 langarm, Mallorca: 1 kurzarm, langarm evtl. nur 1 Oberteil)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Jacken (Rieden: Winterjacke, Faserpelz, leichte Jacke, Skiferien: 1)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Regenjacke</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Badehosen (3)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Schuhe, Finkli (Winterferien: Winterschuhe)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Sandalen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Badeschuhe</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Skianzug</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Regenhosen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Gummistiefel</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 10: Livio und Alina – Diverses -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Livio und Alina – Diverses <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Spielsachen, Maxli (Malheft, Farbstifte, Puzzle, Buch, Ball, Rätselhefte)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Sändelisachen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Jemalt</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Röhrli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Abtrocknungstücher</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Brotsack</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">etwas zum Einschlafen (Maxli)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">kleines Kissen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Rausfallschutz</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Nachtlichtlein</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Sonnenhut</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Sonnencrème</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Sonnenbrille</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 11: Skiferien -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Skiferien (grüner Koffer, kleiner Koffer, grüne Tasche) <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Skijacken</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Skihosen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Skihandschuhe</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Handschuhe</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Mütze</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">2 Hosen (Erwachsene nur eine)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 Jäckli (Daniela)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">2 Pullover, ein halbwarm, ein warmer (Daniela)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">2 Langarmshirts (Daniela)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">2 Kapuzenpullover (für Kids)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 warmer Pullover (Kids)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">2 Skileibchen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">wollige Leibchen und wollige Hosen (Kids und Daniela)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Leggins/lange Unterhosen (je 2)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">3 Strumpfhosen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Socken (Kids und Daniela zu Leggins)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Skileibchen (Kids, kein Faserpelz)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Handcrème</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Lippenpomade</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">evtl. Gamaschen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">runde Halstücher</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Skibrillen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Skihelme</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">2 Skisocken</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Skischuhe</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">kleiner und grosser Rucksack</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 12: Ferienwohnung – Küche -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Ferienwohnung – Küche <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Bratpfanne</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Pfanne</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Milchpfanne</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">DUROMATIC evt.</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Schnitzer kurz und lang</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kellen und Bratschaufeln</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Holzbrettli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Katzenlöffel</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">kleine Kaffeemaschine</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Salat-Besteck</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kaffeesiebli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Gewürzständer/Senf, Mayonnaise, Curry</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Küchenschürze</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Tupperware</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Mässli klein</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Milchklöpfer</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Brotmesser</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">kleiner Milchkrug</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kenwood-Zwiebelglas</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Zündholzer</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Rechaudkerzen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Knoblauchpresse</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Büchsenöffner</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Salatschleuder</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Salatsieb (Ungarn mitnehmen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Toaster</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Wasserkocher</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Auslandstecker/Übergangskabel (Ungarn 2-polig wie Schweiz alt)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">«Schöpflöffel» (Ungarn mitnehmen)</span></div>
+
+        <hr class="separator">
+        <div class="subsection-title">Reinigung & Haushalt</div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">2 Rollen Klebstreifen / Taschenlampe</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Krustex</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Pfannen-Schwamm</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Abwaschlappen Küche und Kochherd</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Abwaschlappen Bad</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kupferblätz</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Enka</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">ALU-Folie, Klarsichtfolie</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Abwaschmittel, Potz</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">weisse Papierservietten</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Abtrocknungstücher (Ungarn nicht mitnehmen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Schaumstoff für Abtropfbrett (Ungarn nicht mitnehmen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Handtücher (Ungarn nicht mitnehmen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Frottétücher (Savognin mitnehmen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">WC-Papier</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Plastic-Tischtuch durchsichtig (Ungarn mitnehmen)</span></div>
+
+        <hr class="separator">
+        <div class="subsection-title">Lebensmittel</div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Siroup Himbeer, Grenadine evt. Mineralwasser</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 kg Zucker</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 P. Maizena für Saucen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 P. Hagebutten-/Pfefferminz-Tee</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 P. Kaffee gemahlen (Büchse, Masslöffel)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kaffeefilter</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 P. Triangeli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1–2 P. Teigwaren / Carbonara-Sauce</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 P. Reis</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">verschiedene Supdrinks</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">2–3 P. Guetzli-Päckli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Essig</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Öl</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kochbutter, Mödeli Butter</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Milch, Eier</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Konfitüre, Himbeergelee</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Orangensaft</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 13: Ferienwohnung Schrannenhof -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Ferienwohnung Schrannenhof <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Abwaschbürsteli, Brotsack und Holzkelle mitnehmen</span></div>
+        <div class="info-line">Tabs für Geschirrspüler, WC-Papier, Küchentücher, Waschlappen und Spülmittel, Schnitzer und Holzbrettli vorhanden</div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 14: Ferienwohnung Kippenhausen (Apfelhof) -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Ferienwohnung Kippenhausen (Apfelhof) <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 Schnitzer</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Brotmesser</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 Holzkelle</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Holzbrettli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Büchsenöffner</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">WC-Papier und Geschirrspültabs mitnehmen</span></div>
+        <div class="info-line">Geschirr-/Handtücher, Abwaschmittel, Abwaschbürsteli vorhanden</div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 15: Ferienwohnung Bezau -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Ferienwohnung Bezau <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 Schnitzer</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Brotmesser</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 Holzkelle</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Holzbrettli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">evtl. Siebli (nur kleines vorhanden)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">kein Sonnenschirm</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Plastiktischtuch mitnehmen</span></div>
+        <div class="info-line">WC-Papier, Abwaschmittel, Handseife, Geschirr- und Handtücher, Geschirrspültabs, Abwaschbürsteli vorhanden</div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 16: Ferienwohnung Gaienhofen -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Ferienwohnung Gaienhofen <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 Schnitzer</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Büchsenöffner</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">1 Holzkelle</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Holzbrettli</span></div>
+        <div class="info-line">(genügend Pfannen, Wasserkocher, Abtrocknungs- und Handtücher vorhanden)</div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 17: Ferienwohnung Rieden -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Ferienwohnung Rieden <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">2 Schnitzer</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Büchsenöffner</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Holzkellen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Holzbrettli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">evtl. Dampfkochtopf</span></div>
+        <div class="info-line">(4 Pfannen, 1 Bratpfanne, Siebli, Mässli, Wasserkocher vorhanden)</div>
+
+        <hr class="separator">
+        <div class="subsection-title">Mitzunehmende Lebensmittel Rieden</div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Tortellini (nicht gut in Deutschland)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Tomatensauce von Oswald + Saucenlöffel</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Fondor, Salz, Pfeffer, Salatgewürz, Curry, Paprika, Oregano</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Gemüsebouillon</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Safran</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Bratensauce</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Microc/Zwieback</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Rapsöl</span></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 18: Ferienwohnung Kaltern (Wastlhof) -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Ferienwohnung Kaltern (Wastlhof) <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">2 Schnitzer</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Büchsenöffner</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Holzkellen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Holzbrettli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Gemüseschäler</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">kleine Pfanne</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Bratpfanne</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Abwaschmittel</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Putzlappen/Bürsteli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">WC-Papier</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">evtl. Dampfkochtopf</span></div>
+        <div class="info-line">(3 grosse Pfannen, Siebli, Salatbesteck, Wasserkocher, Hand- und Geschirrtücher, Duschtücher vorhanden)</div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- SECTION 19: Katze -->
+<!-- ============================================ -->
+<div class="section">
+    <div class="section-header" onclick="toggleSection(this)">
+        <span>Katze 🐱 <span class="section-progress"></span></span>
+        <span class="toggle">▼</span>
+    </div>
+    <div class="section-body">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Medikamente (Katze)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Körbli für Transport</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Kistli und Alufolie</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Schäufeli für Kistli (für Gaggi)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Streu</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Plasticsäcke für Streu</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Schaffell-Kissen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Stoffkörbli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Wasserteller</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Fressteller</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Diät-Büchsen/Sheba</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Fisch in Tiefkühltasche mit Kühlelementen</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Diät-Brekkies</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Rahm-Hühnli</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Brekkie-Teller</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Plastic für unter die Teller</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Spielzeug (Schnur, Müsli, Kügeli)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Barenttuch (im Puppenwagen)</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Haarbürste</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">kleiner Katzenbaum</span></div>
+        <hr class="separator">
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Leintuch zum Abdecken eines Bettes</span></div>
+        <div class="item"><input type="checkbox" onchange="save()"><span class="item-text">Plastic zum evt. abdecken (wie Küche Savognin)</span></div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'ferienliste_state';
+
+    function save() {
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        const state = Array.from(checkboxes).map(cb => cb.checked);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        updateUI();
+    }
+
+    function load() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        try {
+            const state = JSON.parse(raw);
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            state.forEach((val, i) => { if (checkboxes[i]) checkboxes[i].checked = val; });
+        } catch(e) {}
+        updateUI();
+    }
+
+    function updateUI() {
+        // Update item styling
+        document.querySelectorAll('.item').forEach(item => {
+            const cb = item.querySelector('input[type="checkbox"]');
+            if (cb) item.classList.toggle('checked', cb.checked);
+        });
+
+        // Global progress
+        const all = document.querySelectorAll('input[type="checkbox"]');
+        const checked = document.querySelectorAll('input[type="checkbox"]:checked');
+        const pct = all.length ? Math.round(checked.length / all.length * 100) : 0;
+        document.getElementById('globalBar').style.width = pct + '%';
+        document.getElementById('globalText').textContent = `${checked.length} / ${all.length} erledigt (${pct}%)`;
+
+        // Section progress
+        document.querySelectorAll('.section').forEach(sec => {
+            const cbs = sec.querySelectorAll('input[type="checkbox"]');
+            const chk = sec.querySelectorAll('input[type="checkbox"]:checked');
+            const sp = sec.querySelector('.section-progress');
+            if (sp && cbs.length) {
+                sp.textContent = `${chk.length}/${cbs.length}`;
+            }
+        });
+    }
+
+    function toggleSection(header) {
+        const body = header.nextElementSibling;
+        body.classList.toggle('hidden');
+        header.classList.toggle('collapsed');
+    }
+
+    function toggleAll(checked) {
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = checked);
+        save();
+    }
+
+    function expandAll(expand) {
+        document.querySelectorAll('.section-body').forEach(b => b.classList.toggle('hidden', !expand));
+        document.querySelectorAll('.section-header').forEach(h => h.classList.toggle('collapsed', !expand));
+    }
+
+    // Init
+    load();
+</script>
+
+</body>
+</html>
